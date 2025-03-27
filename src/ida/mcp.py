@@ -629,7 +629,7 @@ def decompile_function(address: Annotated[int, "Address of the function to decom
         if cfunc.get_line_item(sl.line, 1, False, None, item, None):
             ds = item.dstr().split(": ")
             print(f"[{PLUGIN_NAME}] {ds = }")
-            if len(ds) == 2:
+            if len(ds) == 2 and ds[0] is not None and ds[0] != "":
                 addr = int(ds[0], 16)
         line = ida_lines.tag_remove(sl.line)
         if len(pseudocode) > 0:
@@ -990,6 +990,35 @@ def get_metadata() -> Metadata:
     }
 
 
+@jsonrpc
+@idawrite
+def repl_idapython(content: Annotated[str, "IDAPython code to run"]) -> str:
+    """Run IDAPython code and return the results with stdout/stderr captured."""
+    import sys
+    import io
+    import traceback
+
+    stdout_capture, stderr_capture = io.StringIO(), io.StringIO()
+    original_stdout, original_stderr = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = stdout_capture, stderr_capture
+    try:
+        exec(content, globals())
+        result = "Success"
+    except Exception as e:
+        result = f"Error: {str(e)}\n{traceback.format_exc()}"
+    finally:
+        sys.stdout, sys.stderr = original_stdout, original_stderr
+
+    response = ""
+    if stdout_output := stdout_capture.getvalue():
+        response += f"<stdout>\n{stdout_output}\n</stdout>\n"
+    if stderr_output := stderr_capture.getvalue():
+        response += f"<stderr>\n{stderr_output}\n</stderr>\n"
+    if not stdout_output and not stderr_output:
+        response += f"{result}"
+    return response
+
+
 #
 # Notes and multi-binary support functions
 #
@@ -1157,7 +1186,6 @@ def list_analyzed_files() -> List[FileInfo]:
     conn.close()
 
     return files
-
 
 
 class MCP(idaapi.plugin_t):
