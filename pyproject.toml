@@ -1,0 +1,21 @@
+[project]
+name = "pcm"
+version = "0.1.0"
+description = "MCP for reverse engineering"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=0.4.1",
+    "flask>=3.1.0",
+]
+
+[project.urls]
+Repository = "https://github.com/rand-tech/pcm"
+Issues = "https://github.com/rand-tech/pcm/issues"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+pcm = "pcm.server:main"

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engagement Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        .file-item:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .note-item:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .tag-badge {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .content-preview {
+            max-height: 100px;
+            overflow: hidden;
+        }
+
+        .address-link {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .side-modal {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: clamp(20rem, 45%, 50rem);
+            height: 100vh;
+            background-color: white;
+            box-shadow: -0.3rem 0 1rem rgba(0, 0, 0, 0.03);
+            z-index: 1050;
+            overflow-y: auto;
+            transition: right 0.1s ease-in-out;
+        }
+
+
+        @media (max-width: 768px) {
+            .side-modal {
+                width: 80%;
+            }
+        }
+
+        .side-modal.active {
+            right: 0;
+        }
+
+        .side-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+            display: none;
+        }
+
+        .side-modal-header {
+            position: sticky;
+            top: 0;
+            background-color: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem;
+            z-index: 1;
+        }
+
+        .side-modal-body {
+            padding: 1rem;
+        }
+
+        .side-modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" id="brandLink" href="#">Engagement Report</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="filesTab" href="#">Files</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="searchTab" href="#">Search</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="tagsTab" href="#">Tags</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Files View -->
+        <div id="filesView">
+            <h2>Analyzed Files</h2>
+            <div class="loading-spinner" id="filesSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading files...</p>
+            </div>
+            <div class="list-group mt-3" id="filesList"></div>
+        </div>
+
+        <!-- File Detail View -->
+        <div id="fileDetailView" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><span id="fileName"></span></h2>
+                <button class="btn btn-secondary" id="backToFiles">
+                    <i class="bi bi-arrow-left"></i> Back to Files
+                </button>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">File Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Path:</strong> <span id="filePath"></span></p>
+                            <p><strong>MD5:</strong> <span id="fileMD5"></span></p>
+                            <p><strong>SHA256:</strong> <span id="fileSHA256"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Size:</strong> <span id="fileSize"></span></p>
+                            <p><strong>Base Address:</strong> <span id="fileBaseAddr"></span></p>
+                            <p><strong>Last Accessed:</strong> <span id="fileLastAccessed"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h3>Notes</h3>
+            <div class="loading-spinner" id="notesSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading notes...</p>
+            </div>
+            <div class="list-group" id="notesList"></div>
+        </div>
+
+        <!-- Search View -->
+        <div id="searchView" style="display: none;">
+            <h2>Search Notes</h2>
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchInput"
+                            placeholder="Search by title or content...">
+                        <button class="btn btn-primary" id="searchButton">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="tagFilter">
+                        <option value="">All Tags</option>
+                    </select>
+                </div>
+            </div>
+            <div class="loading-spinner" id="searchSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Searching...</p>
+            </div>
+            <div id="searchResults"></div>
+        </div>
+
+        <!-- Tags View -->
+        <div id="tagsView" style="display: none;">
+            <h2>All Tags</h2>
+            <div class="loading-spinner" id="tagsSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading tags...</p>
+            </div>
+            <div class="row" id="tagsCloud"></div>
+        </div>
+    </div>
+
+    <!-- Right Side Modal for Note Details -->
+    <div class="side-modal-backdrop" id="sideModalBackdrop"></div>
+    <div class="side-modal" id="sideNoteDetail">
+        <div class="side-modal-header">
+            <h4 id="sideNoteTitle">Note Title</h4>
+            <span class="side-modal-close" id="sideModalClose"><i class="bi bi-x"></i></span>
+        </div>
+        <div class="side-modal-body">
+            <div class="mb-3" id="sideNoteAddressContainer">
+                <strong>Address:</strong> <span id="sideNoteAddress" class="address-link"></span>
+            </div>
+            <div class="mb-3">
+                <strong>Created:</strong> <span id="sideNoteTimestamp"></span>
+            </div>
+            <div class="mb-3" id="sideNoteTagsContainer">
+                <strong>Tags:</strong>
+                <div id="sideNoteTags" class="d-inline"></div>
+            </div>
+            <hr>
+            <div class="mb-3">
+                <div id="sideNoteContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Utility functions
+        function formatAddress (address) {
+            if (!address) return null;
+            if (address.startsWith('0x')) {
+                const addrNum = parseInt(address, 16);
+                return `0x${addrNum.toString(16).toUpperCase().padStart(8, '0')}`;
+            }
+            return address;
+        }
+
+        function formatSize (size) {
+            if (!size) return 'Unknown';
+            if (size.startsWith('0x')) {
+                size = parseInt(size, 16);
+            } else {
+                size = parseInt(size);
+            }
+
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let unitIndex = 0;
+
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+
+            return `${size.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        // DOM Elements
+        const views = {
+            files: document.getElementById('filesView'),
+            fileDetail: document.getElementById('fileDetailView'),
+            search: document.getElementById('searchView'),
+            tags: document.getElementById('tagsView')
+        };
+
+        const tabs = {
+            files: document.getElementById('filesTab'),
+            search: document.getElementById('searchTab'),
+            tags: document.getElementById('tagsTab')
+        };
+
+        const spinners = {
+            files: document.getElementById('filesSpinner'),
+            notes: document.getElementById('notesSpinner'),
+            search: document.getElementById('searchSpinner'),
+            tags: document.getElementById('tagsSpinner')
+        };
+
+        const filesList = document.getElementById('filesList');
+        const notesList = document.getElementById('notesList');
+        const searchResults = document.getElementById('searchResults');
+        const tagsCloud = document.getElementById('tagsCloud');
+        const tagFilter = document.getElementById('tagFilter');
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const backToFilesButton = document.getElementById('backToFiles');
+        const brandLink = document.getElementById('brandLink');
+
+        // Side Modal Elements
+        const sideModal = document.getElementById('sideNoteDetail');
+        const sideModalBackdrop = document.getElementById('sideModalBackdrop');
+        const sideModalClose = document.getElementById('sideModalClose');
+
+        // Current state
+        let currentState = {
+            currentView: 'files',
+            currentFile: null,
+            allTags: []
+        };
+
+        // URL handling
+        function updateURL (view, params = {}) {
+            const url = new URL(window.location);
+            url.hash = view;
+
+            // Clear existing query parameters
+            url.search = '';
+
+            // Add new query parameters
+            Object.entries(params).forEach(([key, value]) => {
+                if (value) {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            // Update browser history without reloading the page
+            window.history.pushState({}, '', url);
+
+            // Update page title based on view
+            updatePageTitle(view, params);
+        }
+
+        // Update page title based on current view
+        function updatePageTitle (view, params = {}) {
+            let title = 'Engagement Report';
+
+            switch (view) {
+                case 'files':
+                    title = 'Files | Engagement Report';
+                    break;
+                case 'file':
+                    if (params.fileName) {
+                        title = `${params.fileName} | Engagement Report`;
+                    } else {
+                        title = 'File Details | Engagement Report';
+                    }
+                    break;
+                case 'search':
+                    if (params.q) {
+                        title = `Search: ${params.q} | Engagement Report`;
+                    } else if (params.tag) {
+                        title = `Tag: ${params.tag} | Engagement Report`;
+                    } else {
+                        title = 'Search | Engagement Report';
+                    }
+                    break;
+                case 'tags':
+                    title = 'Tags | Engagement Report';
+                    break;
+            }
+
+            document.title = title;
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function (event) {
+            handleURLChange();
+        });
+
+        // Parse and handle URL on page load and when it changes
+        function handleURLChange () {
+            const url = new URL(window.location);
+            const hash = url.hash.substring(1) || 'files'; // Default to files if no hash
+            const params = Object.fromEntries(url.searchParams.entries());
+
+            // Handle different views based on hash
+            switch (hash) {
+                case 'file':
+                    if (params.md5) {
+                        loadFileDetail(params.md5);
+                    } else {
+                        switchView('files');
+                    }
+                    break;
+                case 'search':
+                    switchView('search');
+                    if (params.q || params.tag) {
+                        if (params.q) searchInput.value = params.q;
+                        if (params.tag) tagFilter.value = params.tag;
+                        searchNotes();
+                    }
+                    break;
+                case 'tags':
+                    switchView('tags');
+                    break;
+                case 'files':
+                default:
+                    switchView('files');
+                    break;
+            }
+        }
+
+        // Load files list
+        function loadFiles () {
+            spinners.files.style.display = 'block';
+            filesList.innerHTML = '';
+
+            fetch('/api/files')
+                .then(response => response.json())
+                .then(files => {
+                    if (files.length === 0) {
+                        filesList.innerHTML = '<div class="alert alert-info">No files found in the database.</div>';
+                    } else {
+                        files.forEach(file => {
+                            const fileItem = document.createElement('div');
+                            fileItem.className = 'list-group-item file-item';
+                            fileItem.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">${file.name}</h5>
+                                    <small>${file.note_count} notes</small>
+                                </div>
+                                <p class="mb-1">${file.path}</p>
+                                <div class="d-flex justify-content-between">
+                                    <small>MD5: ${file.md5}</small>
+                                    <small>Last accessed: ${file.last_accessed_formatted || 'Unknown'}</small>
+                                </div>
+                            `;
+                            fileItem.addEventListener('click', () => loadFileDetail(file.md5));
+                            filesList.appendChild(fileItem);
+                        });
+                    }
+                    spinners.files.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                    filesList.innerHTML = `<div class="alert alert-danger">Error loading files: ${error.message}</div>`;
+                    spinners.files.style.display = 'none';
+                });
+        }
+
+        // Load file detail and its notes
+        function loadFileDetail (md5) {
+            currentState.currentFile = md5;
+            views.files.style.display = 'none';
+            views.fileDetail.style.display = 'block';
+            notesList.innerHTML = '';
+            spinners.notes.style.display = 'block';
+
+            fetch(`/api/files/${md5}/notes`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update file info
+                    const file = data.file;
+                    document.getElementById('fileName').textContent = file.name;
+                    document.getElementById('filePath').textContent = file.path;
+                    document.getElementById('fileMD5').textContent = file.md5;
+                    document.getElementById('fileSHA256').textContent = file.sha256;
+                    document.getElementById('fileSize').textContent = formatSize(file.size);
+                    document.getElementById('fileBaseAddr').textContent = file.base_addr;
+                    document.getElementById('fileLastAccessed').textContent = file.last_accessed_formatted || 'Unknown';
+
+                    // Update URL and title
+                    updateURL('file', { md5: file.md5, fileName: file.name });
+
+                    // Display notes
+                    if (data.notes.length === 0) {
+                        notesList.innerHTML = '<div class="alert alert-info">No notes found for this file.</div>';
+                    } else {
+                        data.notes.forEach(note => {
+                            const noteItem = document.createElement('div');
+                            noteItem.className = 'list-group-item note-item';
+
+                            let tagsHtml = '';
+                            if (note.tags_list && note.tags_list.length > 0) {
+                                tagsHtml = note.tags_list.map(tag =>
+                                    `<span class="badge bg-secondary tag-badge">${tag}</span>`
+                                ).join(' ');
+                            }
+
+                            noteItem.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">${note.title}</h5>
+                                    <small>${note.timestamp_formatted}</small>
+                                </div>
+                                ${note.address ? `<p class="mb-1"><strong>Address:</strong> <span class="address-link">${formatAddress(note.address)}</span></p>` : ''}
+                                <div class="content-preview mb-2">${note.content.substring(0, 200)}${note.content.length > 200 ? '...' : ''}</div>
+                                <div>${tagsHtml}</div>
+                            `;
+
+                            noteItem.addEventListener('click', () => showSideNoteDetail(note.id));
+                            notesList.appendChild(noteItem);
+                        });
+                    }
+                    spinners.notes.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading file detail:', error);
+                    notesList.innerHTML = `<div class="alert alert-danger">Error loading notes: ${error.message}</div>`;
+                    spinners.notes.style.display = 'none';
+                });
+        }
+
+        // Show note detail in side modal
+        function showSideNoteDetail (noteId) {
+            fetch(`/api/notes/${noteId}`)
+                .then(response => response.json())
+                .then(note => {
+                    document.getElementById('sideNoteTitle').textContent = note.title;
+
+                    const addressContainer = document.getElementById('sideNoteAddressContainer');
+                    if (note.address) {
+                        addressContainer.style.display = 'block';
+                        document.getElementById('sideNoteAddress').textContent = formatAddress(note.address);
+                    } else {
+                        addressContainer.style.display = 'none';
+                    }
+
+                    document.getElementById('sideNoteTimestamp').textContent = note.timestamp_formatted;
+
+                    const tagsContainer = document.getElementById('sideNoteTagsContainer');
+                    const tagsElement = document.getElementById('sideNoteTags');
+
+                    if (note.tags_list && note.tags_list.length > 0) {
+                        tagsContainer.style.display = 'block';
+                        tagsElement.innerHTML = note.tags_list.map(tag =>
+                            `<span class="badge bg-secondary tag-badge">${tag}</span>`
+                        ).join(' ');
+                    } else {
+                        tagsContainer.style.display = 'none';
+                    }
+
+                    // Use marked.js to render markdown content
+                    document.getElementById('sideNoteContent').innerHTML = marked.parse(note.content);
+
+                    // Show the side modal
+                    sideModal.classList.add('active');
+                    sideModalBackdrop.style.display = 'block';
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling of the main content
+                })
+                .catch(error => {
+                    console.error('Error loading note detail:', error);
+                    alert(`Error loading note: ${error.message}`);
+                });
+        }
+
+        // Close side modal
+        function closeSideModal () {
+            sideModal.classList.remove('active');
+            sideModalBackdrop.style.display = 'none';
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+
+        // Load all tags
+        function loadTags () {
+            spinners.tags.style.display = 'block';
+            tagsCloud.innerHTML = '';
+
+            fetch('/api/tags')
+                .then(response => response.json())
+                .then(tags => {
+                    currentState.allTags = tags;
+                    updateTagFilter();
+
+                    if (tags.length === 0) {
+                        tagsCloud.innerHTML = '<div class="alert alert-info">No tags found in the database.</div>';
+                    } else {
+                        tags.forEach(tag => {
+                            const tagCol = document.createElement('div');
+                            tagCol.className = 'col-auto mb-2';
+
+                            const tagBadge = document.createElement('span');
+                            tagBadge.className = 'badge bg-primary p-2 fs-5 tag-badge';
+                            tagBadge.textContent = tag;
+                            tagBadge.addEventListener('click', () => {
+                                searchByTag(tag);
+                            });
+
+                            tagCol.appendChild(tagBadge);
+                            tagsCloud.appendChild(tagCol);
+                        });
+                    }
+                    spinners.tags.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading tags:', error);
+                    tagsCloud.innerHTML = `<div class="alert alert-danger">Error loading tags: ${error.message}</div>`;
+                    spinners.tags.style.display = 'none';
+                });
+        }
+
+        // Update tag filter dropdown
+        function updateTagFilter () {
+            tagFilter.innerHTML = '<option value="">All Tags</option>';
+
+            currentState.allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                tagFilter.appendChild(option);
+            });
+        }
+
+        // Search notes
+        function searchNotes () {
+            const query = searchInput.value.trim();
+            const tag = tagFilter.value;
+
+            if (!query && !tag) {
+                searchResults.innerHTML = '<div class="alert alert-info">Please enter a search term or select a tag.</div>';
+                return;
+            }
+
+            spinners.search.style.display = 'block';
+            searchResults.innerHTML = '';
+
+            // Update URL with search parameters
+            updateURL('search', { q: query, tag: tag });
+
+            fetch(`/api/search?q=${encodeURIComponent(query)}&tag=${encodeURIComponent(tag)}`)
+                .then(response => response.json())
+                .then(notes => {
+                    if (notes.length === 0) {
+                        searchResults.innerHTML = '<div class="alert alert-info">No matching notes found.</div>';
+                    } else {
+                        const resultsList = document.createElement('div');
+                        resultsList.className = 'list-group mt-3';
+
+                        notes.forEach(note => {
+                            const noteItem = document.createElement('div');
+                            noteItem.className = 'list-group-item note-item';
+
+                            let tagsHtml = '';
+                            if (note.tags_list && note.tags_list.length > 0) {
+                                tagsHtml = note.tags_list.map(tag =>
+                                    `<span class="badge bg-secondary tag-badge">${tag}</span>`
+                                ).join(' ');
+                            }
+
+                            noteItem.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">${note.title}</h5>
+                                    <small>${note.timestamp_formatted}</small>
+                                </div>
+                                <p class="mb-1"><strong>File:</strong> ${note.file_name}</p>
+                                ${note.address ? `<p class="mb-1"><strong>Address:</strong> <span class="address-link">${formatAddress(note.address)}</span></p>` : ''}
+                                <div class="content-preview mb-2">${note.content.substring(0, 200)}${note.content.length > 200 ? '...' : ''}</div>
+                                <div>${tagsHtml}</div>
+                            `;
+
+                            noteItem.addEventListener('click', () => showSideNoteDetail(note.id));
+                            resultsList.appendChild(noteItem);
+                        });
+
+                        searchResults.appendChild(resultsList);
+                    }
+                    spinners.search.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error searching notes:', error);
+                    searchResults.innerHTML = `<div class="alert alert-danger">Error searching notes: ${error.message}</div>`;
+                    spinners.search.style.display = 'none';
+                });
+        }
+
+        // Search by tag
+        function searchByTag (tag) {
+            // Switch to search view
+            switchView('search');
+
+            // Set tag in filter
+            tagFilter.value = tag;
+            searchInput.value = '';
+
+            // Perform search
+            searchNotes();
+        }
+
+        // Switch view
+        function switchView (viewName) {
+            // Hide all views
+            Object.values(views).forEach(view => {
+                view.style.display = 'none';
+            });
+
+            // Remove active class from all tabs
+            Object.values(tabs).forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected view and set active tab
+            views[viewName].style.display = 'block';
+            tabs[viewName].classList.add('active');
+
+            currentState.currentView = viewName;
+
+            // Update URL
+            if (viewName === 'files') {
+                updateURL('files');
+            } else if (viewName === 'tags') {
+                updateURL('tags');
+            } else if (viewName === 'search' && !searchInput.value && !tagFilter.value) {
+                updateURL('search');
+            }
+
+            // Load data if needed
+            if (viewName === 'files' && filesList.children.length === 0) {
+                loadFiles();
+            } else if (viewName === 'tags' && tagsCloud.children.length === 0) {
+                loadTags();
+            } else if (viewName === 'search' && currentState.allTags.length === 0) {
+                loadTags();
+            }
+        }
+
+        // Event Listeners
+        tabs.files.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('files');
+        });
+
+        tabs.search.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('search');
+        });
+
+        tabs.tags.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('tags');
+        });
+
+        // Brand link returns to main page
+        brandLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('files');
+        });
+
+        backToFilesButton.addEventListener('click', () => {
+            views.fileDetail.style.display = 'none';
+            views.files.style.display = 'block';
+            currentState.currentFile = null;
+            updateURL('files');
+        });
+
+        searchButton.addEventListener('click', searchNotes);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchNotes();
+            }
+        });
+        tagFilter.addEventListener('change', () => {
+            const tag = tagFilter.value;
+            if (tag) {
+                searchByTag(tag);
+            } else {
+                searchNotes();
+            }
+        });
+
+        // Side modal close events
+        sideModalClose.addEventListener('click', closeSideModal);
+        sideModalBackdrop.addEventListener('click', closeSideModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sideModal.classList.contains('active')) {
+                closeSideModal();
+            }
+        });
+
+        // Handle address link click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('address-link')) {
+                const address = e.target.textContent;
+                // Handle address link click (e.g., navigate to address in IDA)
+                console.log(`Address clicked: ${address}`);
+                // Prevent propagation to avoid closing the modal
+                e.stopPropagation();
+            }
+        });
+
+        // Add event listeners for tag badges in search results and note details
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tag-badge')) {
+                const tag = e.target.textContent;
+                closeSideModal(); // Close the side modal if open
+                searchByTag(tag);
+                // Prevent propagation
+                e.stopPropagation();
+            }
+        });
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if there's a URL hash already
+            if (window.location.hash || window.location.search) {
+                handleURLChange();
+            } else {
+                // Start with files view
+                switchView('files');
+            }
+        });
+    </script>
+</body>
+
+</html>
