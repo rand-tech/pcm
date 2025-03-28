@@ -628,7 +628,6 @@ def decompile_function(address: Annotated[int, "Address of the function to decom
         addr = None if i > 0 else cfunc.entry_ea
         if cfunc.get_line_item(sl.line, 1, False, None, item, None):
             ds = item.dstr().split(": ")
-            print(f"[{PLUGIN_NAME}] {ds = }")
             if len(ds) == 2 and ds[0] is not None and ds[0] != "":
                 addr = int(ds[0], 16)
         line = ida_lines.tag_remove(sl.line)
@@ -637,7 +636,7 @@ def decompile_function(address: Annotated[int, "Address of the function to decom
         if addr is None:
             pseudocode += f"/* line: {i} */ {line}"
         else:
-            pseudocode += f"/* line: {i}, address: {addr} */ {line}"
+            pseudocode += f"/* line: {i}, address: {addr:#x} */ {line}"
 
     return pseudocode
 
@@ -695,7 +694,7 @@ def get_function_blocks(address: Annotated[int, "Address of the function to get 
 
     for block in flow_chart:
         successor_addresses = []
-        for succ_idx in range(block.nsucc()):
+        for succ_idx in range(block.succ()):
             succ_block = block.succ(succ_idx)
             successor_addresses.append(succ_block.start_ea)
 
@@ -718,7 +717,7 @@ def get_function_cfg(address: Annotated[int, "Address of the function to get CFG
 
     for i, block in enumerate(flow_chart):
         successors = []
-        for succ_idx in range(block.nsucc()):
+        for succ_idx in range(block.succ()):
             succ_block = block.succ(succ_idx)
             # Store the block ID as successor
             successors.append(succ_block.id)
@@ -727,7 +726,7 @@ def get_function_cfg(address: Annotated[int, "Address of the function to get CFG
         block_type = "normal"
         if i == 0:
             block_type = "entry"
-        elif block.nsucc() == 0:
+        elif block.succ() == 0:
             block_type = "exit"
 
         nodes.append({"id": block.id, "start_address": block.start_ea, "end_address": block.end_ea, "type": block_type, "successors": successors})
