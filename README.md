@@ -83,3 +83,9 @@ Prerequisites:
 
 - <https://github.com/mrexodia/ida-pro-mcp> 
 - <https://github.com/MxIris-Reverse-Engineering/ida-mcp-server>
+
+**Attribution**:
+This project is based on [IDA Pro MCP](https://github.com/mrexodia/ida-pro-mcp) by Duncan Ogilvie (@mrexodia). Thank you
+
+**License**:
+This project is licensed under the MIT License - see the LICENSE file for details. The original code is also licensed under the MIT License.
