@@ -738,26 +738,15 @@ def get_function_cfg(address: Annotated[int, "Address of the function to get CFG
 @idaread
 def get_xrefs_to(address: Annotated[int, "Address to get xrefs to"]) -> List[XrefEntry]:
     """Get all cross references to the given address"""
-    xrefs = []
-
-    xref = ida_xref.get_first_cref_to(address)
-    while xref != ida_idaapi.BADADDR:
-        xref_type = "unknown"
-        if ida_xref.is_call_insn(xref):
-            xref_type = "call"
-        elif ida_xref.is_flow(xref):
-            xref_type = "flow"
-        else:
-            xref_type = "data"
-
-        # Get the function containing this xref
-        func = idaapi.get_func(xref)
-        function_name = ida_funcs.get_func_name(func.start_ea) if func else "global"
-
-        xrefs.append({"from_address": xref, "to_address": address, "type": xref_type, "function_name": function_name})
-
-        xref = ida_xref.get_next_cref_to(address, xref)
-
+    xrefs = [
+        {
+            'from_address': xref.frm,
+            'to_address': xref.to,
+            'type': idautils.XrefTypeName(xref.type),
+            'function_name': ida_funcs.get_func_name(xref.frm) if xref.frm else 'global',
+        }
+        for xref in idautils.XrefsTo(address)
+    ]
     return xrefs
 
 
@@ -765,26 +754,15 @@ def get_xrefs_to(address: Annotated[int, "Address to get xrefs to"]) -> List[Xre
 @idaread
 def get_xrefs_from(address: Annotated[int, "Address to get xrefs from"]) -> List[XrefEntry]:
     """Get all cross references from the given address"""
-    xrefs = []
-
-    xref = ida_xref.get_first_cref_from(address)
-    while xref != ida_idaapi.BADADDR:
-        xref_type = "unknown"
-        if ida_xref.is_call_insn(address):
-            xref_type = "call"
-        elif ida_xref.is_flow(xref):
-            xref_type = "flow"
-        else:
-            xref_type = "data"
-
-        # Get the function containing this xref
-        func = idaapi.get_func(address)
-        function_name = ida_funcs.get_func_name(func.start_ea) if func else "global"
-
-        xrefs.append({"from_address": address, "to_address": xref, "type": xref_type, "function_name": function_name})
-
-        xref = ida_xref.get_next_cref_from(address, xref)
-
+    xrefs = [
+        {
+            'from_address': xref.frm,
+            'to_address': xref.to,
+            'type': idautils.XrefTypeName(xref.type),
+            'function_name': ida_funcs.get_func_name(xref.frm) if xref.frm else 'global',
+        }
+        for xref in idautils.XrefsFrom(address)
+    ]
     return xrefs
 
 
